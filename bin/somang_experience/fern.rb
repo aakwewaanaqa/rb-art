@@ -80,7 +80,8 @@ module RbArt
             c seg.p2, seg.p1, seg.p0
             z
 
-            style plant_style
+            fill plant_style[:fill]
+            stroke "none"
           },
           RbArt::Path.new {
             m seg.p0
@@ -88,7 +89,8 @@ module RbArt
             c seg.p2, seg.p1, seg.p0
             z
 
-            style plant_style
+            fill plant_style[:fill]
+            stroke "none"
           },
         ]
       }
