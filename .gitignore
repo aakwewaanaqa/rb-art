@@ -9,11 +9,7 @@
 /vendor/bundle/
 
 # Generated output
-/out/*.svg
-/out/*.png
-/out/*.gif
-/out/*.mp4
-/out/frames/
+/out
 
 # Logs
 *.log

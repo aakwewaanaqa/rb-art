@@ -3,9 +3,9 @@
 module RbArt
   module Geometry
     module Rnd
-      def self.inside_unit_circle
-        theta = Random.rand(Math::PI * 2.0)
-        radius = Random.rand
+      def self.inside_unit_circle(rng: Random)
+        theta = rng.rand(Math::PI * 2.0)
+        radius = rng.rand
         x = Math.sin theta
         y = Math.cos theta
         RbArt::Geometry::Point.new(x, y) * radius

@@ -10,6 +10,10 @@ module RbArt
         @p0, @p1, @p2, @p3 = p0, p1, p2, p3
       end
 
+      # 把直線 p0->p1 包裝成 CubicBezier（控制點等距落在線上），
+      # 這樣直線段跟曲線段可以用同一套 point_at/tangent_at/arc_length API 混著處理。
+      def self.line(p0, p1) = CubicBezier.new(p0, p0.lerp(p1, 1.0 / 3), p0.lerp(p1, 2.0 / 3), p1)
+
       def point_at(t) = blossom(t, t, t)
 
       # blossom(x, y, z)：對稱、多重仿射，b(t,t,t) = 曲線在 t 的點。

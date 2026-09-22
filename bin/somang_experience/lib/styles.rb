@@ -1,9 +1,11 @@
-require_relative "../../lib/rb_art"
+require_relative "../../../lib/rb_art"
 
 module RbArt
   # 跟背景色差距越大的顏色，被抽到的機率越低。
   BackgroundColor = RbArt.color_hex("#9ED06D")
   PlantNoramlColor = RbArt.color_hex("#A8DF11")
+  SkinPink = RbArt.color_hex "FFBAE7"
+  SpiritBlue = RbArt.color_hex "0BAEFF"
 
   GrassColors = [
     RbArt.color_hex("#DBFD02"),

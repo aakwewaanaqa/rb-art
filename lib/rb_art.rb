@@ -1,6 +1,8 @@
+require_relative "rb_art/extensions"
 require_relative "rb_art/geometry"
 require_relative "rb_art/color"
 require_relative "rb_art/path"
+require_relative "rb_art/text"
 require_relative "rb_art/canvas"
 require_relative "rb_art/animation"
 require_relative "rb_art/shapes/grass_clump"

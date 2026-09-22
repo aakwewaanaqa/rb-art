@@ -10,48 +10,40 @@ module RbArt
     def bend(v) @bend = v end
     def styles(v) @styles = v end
 
+    # 固定這株的隨機骨架（控制點、分段數），同一個 seed 每次 to_svg 都會拿到
+    # 一樣的基礎形狀，只有 wind 造成的偏移不同——這樣才能在動畫裡逐幀呼叫
+    # to_svg(wind: ...) 而形狀不會亂跳。不設就每次 initialize 都用新亂數。
+    def seed(v) @seed = v end
+
     def initialize(&block)
       self.instance_eval(&block)
+      @rng = Random.new(@seed || Random.new_seed)
+      @base_curve = build_base_curve
+      @n = (5..10).to_a.sample(random: @rng)
     end
 
-    def to_svg
-      stage_1 = -> {
-        outward = @direction * @length
-        o = @root
-        control_points = 
-          [o, o].map { |cp|
-            cp + outward * Random.rand + RbArt::Geometry::Rnd.inside_unit_circle * Random.rand * @bend
-          }.sort_by { |cp|
-            o.dist(cp)
-          }
-    
-        {
-          p0: o,
-          p1: control_points[0],
-          p2: control_points[1],
-          p3: o + outward
-        }
-      }.()
-    
-      p0 = stage_1[:p0]
-      p1 = stage_1[:p1]
-      p2 = stage_1[:p2]
-      p3 = stage_1[:p3]
+    # wind: 可選的 proc，簽名 ->(point, height_ratio) { offset_point }。
+    # height_ratio 是 0（根部，固定不動）~1（頂端，位移最大）。純函式重算，
+    # 不會動到 @rng，所以同一株在不同 frame 呼叫骨架都一樣，只有 wind 偏移不同。
+    def to_svg(wind: nil)
+      p0 = @base_curve[:p0]
+      p1 = offset_point(@base_curve[:p1], wind, 0.4)
+      p2 = offset_point(@base_curve[:p2], wind, 0.75)
+      p3 = offset_point(@base_curve[:p3], wind, 1.0)
       curve = RbArt::Geometry::CubicBezier.new(p0, p1, p2, p3)
-    
+
       stage_2 = -> {
-        n = (5..10).to_a.sample
-        base = (0...n).map { |i| @base * (@growth ** i) }
+        base = (0...@n).map { |i| @base * (@growth ** i) }
         sum = base.sum
         t_lengths = (base.map { |v| v / sum.to_f }).reverse
         arc_segs = curve.split_by_arc_lengths t_lengths
-    
+
         {
           t_lengths: t_lengths,
           arc_segs: arc_segs
         }
       }.()
-    
+
       plant_style = RbArt::Geometry::Rnd.weighted_sample(@styles.map { |s| [s, s[:weight] || 1] })
 
       svg_elements = []
@@ -66,7 +58,7 @@ module RbArt
         lpmid = (lp1 + lp2) * 0.5
         lp1 = lp1.lerp(lpmid, @pointiness)
         lp2 = lp2.lerp(lpmid, @pointiness)
-        
+
         rp2 = seg.p3 + rnorm + tan * len * @heartiness
         rp1 = seg.p0 + rnorm + tan * len * @heartiness
         rpmid = (rp1 + rp2) * 0.5
@@ -81,7 +73,8 @@ module RbArt
             z
 
             fill plant_style[:fill]
-            stroke "none"
+            stroke plant_style[:fill]
+            stroke_width "1"
           },
           RbArt::Path.new {
             m seg.p0
@@ -90,12 +83,39 @@ module RbArt
             z
 
             fill plant_style[:fill]
-            stroke "none"
+            stroke plant_style[:fill]
+            stroke_width "1"
           },
         ]
       }
 
       "<g>\n#{svg_elements.map(&:to_svg).join("\n")}\n</g>"
+    end
+
+    private
+
+    def build_base_curve
+      outward = @direction * @length
+      o = @root
+      control_points =
+        [o, o].map { |cp|
+          cp + outward * @rng.rand + RbArt::Geometry::Rnd.inside_unit_circle(rng: @rng) * @rng.rand * @bend
+        }.sort_by { |cp|
+          o.dist(cp)
+        }
+
+      {
+        p0: o,
+        p1: control_points[0],
+        p2: control_points[1],
+        p3: o + outward
+      }
+    end
+
+    def offset_point(p, wind, height_ratio)
+      return p unless wind
+
+      p + wind.call(p, height_ratio)
     end
   end
 end
