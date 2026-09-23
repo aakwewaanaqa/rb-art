@@ -15,6 +15,13 @@ module RbArt
   class Path
     include Geometry
 
+    # 指令暫存的結構：cmd 是 SVG 指令字母、points 是這個指令帶的座標點
+    # （Geometry::Point 陣列，沒有座標的指令如 Z 則是 nil）、extra 放
+    # 不是座標的參數（H/V 的單軸數值、A 的 rx/ry/旋轉角/旗標）。
+    # 拆成結構化資料而不是直接字串化，是為了將來能在 to_d 之前對
+    # points 做一輪效果轉換（例如彎曲），呼叫端的介面不受影響。
+    Command = Struct.new(:cmd, :points, :extra)
+
     # 只組出 `d` 字串（座標指令）。
     def self.build(&block)
       new(&block).to_d
@@ -29,6 +36,7 @@ module RbArt
     def initialize(&block)
       @commands = []
       @attrs = {}
+      @effects = []
       instance_eval(&block) if block_given?
     end
 
@@ -37,6 +45,13 @@ module RbArt
     def stroke(color)       = (@attrs["stroke"] = color)
     def stroke_width(width) = (@attrs["stroke-width"] = width)
     def attr(name, value)   = (@attrs[name.to_s] = value)
+
+    # 疊加一個 Point -> Point 的變形（例如彎曲），套用在 to_d 字串化之前。
+    # 可以呼叫多次疊加，依呼叫順序套用；前一個 effect 的輸出就是下一個的輸入。
+    def effect(fx = nil, &block)
+      @effects << (fx || block)
+      self
+    end
 
     # 一次套用 { fill:, stroke:, stroke_width: } 這種樣式 hash，等同分別呼叫
     # fill / stroke / stroke_width，缺的 key 就跳過。
@@ -48,49 +63,30 @@ module RbArt
 
     # -- 絕對座標 --
     # 每個座標都可以傳 Geometry::Point，或拆開傳 x, y 兩個數字，兩種可混用。
-    def m(*args) = (x, y = coords(args); raw("M", pt(x, y)))
-    def l(*args) = (x, y = coords(args); raw("L", pt(x, y)))
-    def h(x)     = raw("H", fmt(x))
-    def v(y)     = raw("V", fmt(y))
-    def c(*args)
-      x1, y1, x2, y2, x, y = coords(args)
-      raw("C", "#{pt(x1, y1)}, #{pt(x2, y2)}, #{pt(x, y)}")
-    end
-    def s(*args)
-      x2, y2, x, y = coords(args)
-      raw("S", "#{pt(x2, y2)}, #{pt(x, y)}")
-    end
-    def q(*args)
-      x1, y1, x, y = coords(args)
-      raw("Q", "#{pt(x1, y1)}, #{pt(x, y)}")
-    end
-    def t(*args) = (x, y = coords(args); raw("T", pt(x, y)))
+    def m(*args) = raw("M", points(args))
+    def l(*args) = raw("L", points(args))
+    def h(x)     = raw("H", nil, extra: [x])
+    def v(y)     = raw("V", nil, extra: [y])
+    def c(*args) = raw("C", points(args))
+    def s(*args) = raw("S", points(args))
+    def q(*args) = raw("Q", points(args))
+    def t(*args) = raw("T", points(args))
     def a(rx, ry, x_rotation, large_arc, sweep, *point)
-      x, y = coords(point)
-      raw("A", "#{fmt(rx)} #{fmt(ry)} #{fmt(x_rotation)} #{large_arc ? 1 : 0} #{sweep ? 1 : 0} #{pt(x, y)}")
+      raw("A", points(point), extra: [rx, ry, x_rotation, large_arc ? 1 : 0, sweep ? 1 : 0])
     end
     def z = raw("Z", nil)
 
     # -- 相對座標（小寫指令，方法名加 `!`）--
-    def m!(*args) = (x, y = coords(args); raw("m", pt(x, y)))
-    def l!(*args) = (x, y = coords(args); raw("l", pt(x, y)))
-    def h!(dx)    = raw("h", fmt(dx))
-    def v!(dy)    = raw("v", fmt(dy))
-    def c!(*args)
-      x1, y1, x2, y2, x, y = coords(args)
-      raw("c", "#{pt(x1, y1)}, #{pt(x2, y2)}, #{pt(x, y)}")
-    end
-    def s!(*args)
-      x2, y2, x, y = coords(args)
-      raw("s", "#{pt(x2, y2)}, #{pt(x, y)}")
-    end
-    def q!(*args)
-      x1, y1, x, y = coords(args)
-      raw("q", "#{pt(x1, y1)}, #{pt(x, y)}")
-    end
-    def t!(*args) = (x, y = coords(args); raw("t", pt(x, y)))
+    def m!(*args) = raw("m", points(args))
+    def l!(*args) = raw("l", points(args))
+    def h!(dx)    = raw("h", nil, extra: [dx])
+    def v!(dy)    = raw("v", nil, extra: [dy])
+    def c!(*args) = raw("c", points(args))
+    def s!(*args) = raw("s", points(args))
+    def q!(*args) = raw("q", points(args))
+    def t!(*args) = raw("t", points(args))
 
-    def to_d = @commands.join(" ")
+    def to_d = @commands.map { |command| render(apply_effects(command)) }.join(" ")
 
     def to_svg
       attrs = { "d" => to_d }.merge(@attrs)
@@ -100,17 +96,45 @@ module RbArt
 
     private
 
-    # 把混合了 Geometry::Point 與純數字的參數列表，攤平成一串數字。
-    # 例如 [Point(1,2), 3] -> [1, 2, 3]，[1, 2, 3, 4] -> [1, 2, 3, 4] 不變。
-    def coords(args) = args.flat_map { |a| a.is_a?(Geometry::Point) ? [a.x, a.y] : [a] }
+    # 把混合了 Geometry::Point 與純數字的參數列表，攤平後兩兩一組包成
+    # Geometry::Point。例如 [Point(1,2), 3, 4] -> [Point(1,2), Point(3,4)]。
+    def points(args)
+      nums = args.flat_map { |a| a.is_a?(Geometry::Point) ? [a.x, a.y] : [a] }
+      nums.each_slice(2).map { |x, y| Geometry::Point.new(x, y) }
+    end
+
+    def raw(cmd, points, extra: nil)
+      @commands << Command.new(cmd, points, extra)
+      self
+    end
+
+    # 把 @effects 依序套用到一個指令的 points 上，回傳套用後的新 Command。
+    # H/V 只帶單軸數值、Z 沒有座標，這兩種沒有 points 可套，原樣跳過。
+    def apply_effects(command)
+      return command if command.points.nil? || @effects.empty?
+
+      transformed = command.points.map { |p| @effects.reduce(p) { |point, fx| fx.call(point) } }
+      Command.new(command.cmd, transformed, command.extra)
+    end
+
+    # 指令真正字串化的地方，只在 to_d 被呼叫時才發生。
+    def render(command)
+      case command.cmd
+      when "Z", "z"
+        command.cmd
+      when "H", "V", "h", "v"
+        "#{command.cmd} #{fmt(command.extra[0])}"
+      when "A", "a"
+        rx, ry, x_rotation, large_arc, sweep = command.extra
+        p = command.points.first
+        "#{command.cmd} #{fmt(rx)} #{fmt(ry)} #{fmt(x_rotation)} #{large_arc} #{sweep} #{pt(p.x, p.y)}"
+      else
+        "#{command.cmd} #{command.points.map { |p| pt(p.x, p.y) }.join(", ")}"
+      end
+    end
 
     def pt(x, y) = "#{fmt(x)} #{fmt(y)}"
 
     def fmt(n) = n.is_a?(Numeric) ? n.round(2) : n
-
-    def raw(cmd, args)
-      @commands << (args ? "#{cmd} #{args}" : cmd)
-      self
-    end
   end
 end

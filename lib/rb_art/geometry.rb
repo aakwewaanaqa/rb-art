@@ -1,5 +1,6 @@
 # 共用的向量與橢圓幾何工具。
 require_relative "geometry/point"
+require_relative "geometry/segment"
 require_relative "geometry/rect"
 require_relative "geometry/functions"
 require_relative "geometry/ellipse"
