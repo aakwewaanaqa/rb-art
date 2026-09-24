@@ -1,3 +1,4 @@
+require_relative "rb_art/functions"
 require_relative "rb_art/extensions"
 require_relative "rb_art/geometry"
 require_relative "rb_art/color"

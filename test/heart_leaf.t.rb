@@ -17,8 +17,11 @@ RbArt::Canvas.new {
       stroke_width: "4pt"
     })
 
-    root RbArt::Geometry::Point.new(WIDTH * 0.5, HEIGHT * 0.75)
-    direction RbArt::Geometry::Point.new(0, -1)
+    r = RbArt::Geometry::Point.new(WIDTH * 0.5, HEIGHT * 0.75)
+    d = RbArt::Geometry::Point.new(0, -1)
+
+    root r
+    direction d
     stem_width  5.0
     stem_length 7.0
     leaf_width  WIDTH  * 0.2

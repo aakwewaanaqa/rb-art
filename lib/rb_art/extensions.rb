@@ -1,4 +1,8 @@
 class Array
+  def scramble
+    self.sample count
+  end
+
   def each_i_first_last(&block)
     n = count
     each_with_index { |v, idx|

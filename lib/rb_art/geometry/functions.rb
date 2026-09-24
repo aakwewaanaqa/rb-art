@@ -61,19 +61,23 @@ module RbArt
 
     # 給一個「局部座標系」(root 為原點、direction 為前方 u 軸、其左手法向為 v 軸)
     # 跟一個曲率 curvature（= 1/半徑，正負決定往左或往右彎、0 代表不彎），
-    # 回傳一個 (u, v) -> Point 的函式：把「直線局部座標」的點彎成沿圓弧分布。
-    # u 是沿弧長走多遠，v 是沿彎曲後法線方向的側向偏移（正值 = 往 left 那側）。
+    # 回傳一個 Point -> Point 的函式：把落在這個局部座標系直線版上的世界座標點，
+    # 彎成沿圓弧分布後對應的世界座標點。呼叫端不需要知道 u、v 的定義，
+    # 丟一個世界座標點進來就好，跟 Path#effect 的 Point -> Point 契約一致。
     #
-    # 推導：把 direction 沿弧長積分即可得到彎曲後的中心線公式
+    # 推導：先把點投影回局部座標 (u, v)（u = 沿 d 軸走多遠、v = 沿 left 軸偏多少），
+    # 再把 direction 沿弧長積分即可得到彎曲後的中心線公式
     #   center_line(u) = root - r*left + r*left.rotate(curvature*u)  (r = 1/curvature)
-    # 再加上側向偏移 v（同樣隨角度一起轉）就是完整公式。
+    # 加上側向偏移 v（同樣隨角度一起轉）就是完整公式。
     def bend_frame(root, direction, curvature)
       d = direction.normalize
       left = d.rotate(-Math::PI / 2)
-      return ->(u, v) { root + d * u + left * v } if curvature.zero?
+      return ->(p) { p } if curvature.zero?
 
       r = 1.0 / curvature
-      ->(u, v) do
+      ->(p) do
+        u = (p - root).dot(d)
+        v = (p - root).dot(left)
         theta = curvature * u
         left_theta = left.rotate(theta)
         root - left * r + left_theta * (r + v)
