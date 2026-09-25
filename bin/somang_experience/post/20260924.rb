@@ -1,5 +1,5 @@
-require_relative "../lib"
-require_relative "../../../lib/rb_art"
+require_relative "ref"
+ref
 
 Width  = 500
 Height = 500

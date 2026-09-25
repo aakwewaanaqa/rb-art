@@ -23,7 +23,6 @@ module RbArt
       def reflect(point, t = 1.0) = point.lerp(self * 2 - point, t)
       def set_x(x) = Point.new(x, y)
       def set_y(y) = Point.new(x, y)
-
     end
   end
 end

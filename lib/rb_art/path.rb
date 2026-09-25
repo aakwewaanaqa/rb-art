@@ -76,6 +76,33 @@ module RbArt
     end
     def z = raw("Z", nil)
 
+    # 用 Catmull-Rom spline 平滑通過整串點畫一條曲線：m 到第一個點，
+    # 接著把 CubicBezier.catmull_rom_chain 算出的每一段轉成 c 指令。
+    # tension / closed 意義同 CubicBezier.catmull_rom_chain。
+    def catmull_rom(pts, tension: 1.0, closed: false)
+      m pts.first
+      Geometry::CubicBezier.catmull_rom_chain(pts, tension: tension, closed: closed).each { |bez|
+        c bez.p1, bez.p2, bez.p3
+      }
+      z if closed
+    end
+
+    # 把 beziers（中心線，可以是單一 CubicBezier、CubicBezier 陣列，或
+    # ArbitraryChain）展開成有寬度的填色外框（Expand Stroke），直接用折線
+    # 畫出來。width/closed/samples 等意義見 Geometry::StrokeExpand.outline。
+    # closed: true 時會畫出「外圈 + 內圈」兩條封閉路徑，記得自己在
+    # style/attr 設 fill-rule: evenodd 才會變成圈狀。
+    def expand_stroke(beziers, width, closed: false, samples: 16, cap_samples: 8, join_samples: 6)
+      loops = Geometry::StrokeExpand.outline(
+        beziers, width, closed: closed, samples: samples, cap_samples: cap_samples, join_samples: join_samples
+      )
+      loops.each { |loop|
+        m loop.first
+        l(*loop[1..])
+        z
+      }
+    end
+
     # -- 相對座標（小寫指令，方法名加 `!`）--
     def m!(*args) = raw("m", points(args))
     def l!(*args) = raw("l", points(args))

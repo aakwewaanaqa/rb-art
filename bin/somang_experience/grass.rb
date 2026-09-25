@@ -17,12 +17,16 @@ sf_styles = [
   SFStyle.new("#C7F251", "#93BE1D"),
 ]
 
-RbArt::Animation.new {
+animation = RbArt::Animation.new {
   frames 60
   scale 4
   mp4 "out/test.mp4"
+  gif "out/test.gif"
+
   fps 3
-}.render { |i, total|
+}
+
+animation.render { |i, total|
   RbArt::Canvas.new {
     width  200
     height 200
@@ -91,5 +95,7 @@ RbArt::Animation.new {
       attr "stroke-linejoin", "round"
     }
   }
-}.write_mp4
+}
 
+animation.write_mp4
+animation.write_gif

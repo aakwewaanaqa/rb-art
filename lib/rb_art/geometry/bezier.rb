@@ -112,6 +112,9 @@ module RbArt
       # 單位切線向量。
       def tangent_at(t) = derivative_at(t).normalize
 
+      # 單位法線向量（切線逆時針轉 90 度，哪一側是「外側」要看點序自行判斷）。
+      def normal_at(t) = tangent_at(t).rotate(Math::PI / 2)
+
       # 曲率 κ(t) = (x'y'' - y'x'') / |B'(t)|^3，符號代表彎的方向（正負對應左右轉）。
       def curvature_at(t)
         d1 = derivative_at(t)
@@ -121,6 +124,28 @@ module RbArt
       end
 
       def to_a = [p0, p1, p2, p3]
+
+      # 用 Catmull-Rom spline 平滑通過給定的一串點，轉成首尾相接的 CubicBezier 陣列
+      # （每個原始點都會被曲線精準通過，不像 t()/T 那樣只是鏡射前一段控制點）。
+      # tension 越大曲線越貼近原始折線（更「緊」），預設 1.0 是標準 Catmull-Rom。
+      # closed: true 頭尾相接成封閉曲線（首尾也會平滑銜接）。
+      def self.catmull_rom_chain(points, tension: 1.0, closed: false)
+        raise ArgumentError, "at least 2 points required" if points.size < 2
+        return [line(points[0], points[1])] if points.size == 2
+
+        n = points.size
+        at = ->(i) { closed ? points[i % n] : points[i.clamp(0, n - 1)] }
+        segments = closed ? (0...n) : (0...(n - 1))
+
+        segments.map { |i|
+          p0, p1, p2, p3 = at.(i - 1), at.(i), at.(i + 1), at.(i + 2)
+
+          c1 = p1 + (p2 - p0).scale(1.0 / (6 * tension))
+          c2 = p2 - (p3 - p1).scale(1.0 / (6 * tension))
+
+          CubicBezier.new(p1, c1, c2, p2)
+        }
+      end
     end
   end
 end
