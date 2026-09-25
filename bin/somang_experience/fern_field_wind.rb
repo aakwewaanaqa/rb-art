@@ -97,4 +97,4 @@ RbArt::Animation.new {
 }.render { |i, total|
   t = i.fdiv(total) * Math::PI * 2
   build_canvas.(t)
-}.write_gif
+}

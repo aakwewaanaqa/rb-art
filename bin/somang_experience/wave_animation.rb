@@ -74,4 +74,4 @@ RbArt::Animation.new {
 }.render { |i, total|
   phase = i.fdiv(total) * Math::PI * 2
   build_canvas.(phase)
-}.write_gif
+}

@@ -5,7 +5,7 @@ module RbArt
   #
   # 依賴外部指令：`magick`（SVG -> PNG）與 `ffmpeg`（PNG 序列 -> GIF/MP4）。
   #
-  #   animation = RbArt::Animation.new {
+  #   RbArt::Animation.new {
   #     frames 60
   #     gif "out/animation.gif"
   #     mp4 "out/animation.mp4"
@@ -14,8 +14,10 @@ module RbArt
   #     canvas << RbArt::Path.draw { ... }
   #     canvas
   #   }
-  #   animation.write_gif
-  #   animation.write_mp4
+  #
+  # render 結束時會自動輸出有設定的 gif / mp4（跟 Canvas 一樣：內容準備好就自動寫檔）。
+  # 若只想拿到 frame 序列而不自動輸出，設定區塊不要呼叫 gif / mp4，事後再手動呼叫
+  # write_gif / write_mp4 即可。
   #
   # canvas 座標可以照方便計算的小尺寸來畫（例如 200x200），輸出時用 scale:
   # 放大，因為 SVG 是向量，rasterize 時才放大是用目標解析度重新算線條，
@@ -48,6 +50,8 @@ module RbArt
         canvas = block.call(i, @frames)
         canvas.write(svg_path(i))
       end
+      write_gif if @gif
+      write_mp4 if @mp4
       self
     end
 

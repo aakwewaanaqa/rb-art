@@ -96,6 +96,3 @@ animation.render { |i, total|
     }
   }
 }
-
-animation.write_mp4
-animation.write_gif
