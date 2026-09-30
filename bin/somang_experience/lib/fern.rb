@@ -35,11 +35,11 @@ module RbArt
       stage_2 = -> {
         base = (0...@n).map { |i| @base * (@growth ** i) }
         sum = base.sum
-        t_lengths = (base.map { |v| v / sum.to_f }).reverse
-        arc_segs = curve.split_by_arc_lengths t_lengths
+        spatial_lengths = (base.map { |v| v / sum.to_f }).reverse
+        arc_segs = curve.split_by_spatial_lengths spatial_lengths
 
         {
-          t_lengths: t_lengths,
+          spatial_lengths: spatial_lengths,
           arc_segs: arc_segs
         }
       }.()

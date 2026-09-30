@@ -77,11 +77,11 @@ module RbArt
     def z = raw("Z", nil)
 
     # 用 Catmull-Rom spline 平滑通過整串點畫一條曲線：m 到第一個點，
-    # 接著把 CubicBezier.catmull_rom_chain 算出的每一段轉成 c 指令。
-    # tension / closed 意義同 CubicBezier.catmull_rom_chain。
+    # 接著把 CubicBezier.catmull 算出的每一段轉成 c 指令。
+    # tension / closed 意義同 CubicBezier.catmull。
     def catmull_rom(pts, tension: 1.0, closed: false)
       m pts.first
-      Geometry::CubicBezier.catmull_rom_chain(pts, tension: tension, closed: closed).each { |bez|
+      Geometry::CubicBezier.catmull(pts, tension: tension, closed: closed).each { |bez|
         c bez.p1, bez.p2, bez.p3
       }
       z if closed

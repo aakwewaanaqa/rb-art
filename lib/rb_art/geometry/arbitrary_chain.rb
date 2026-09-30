@@ -12,52 +12,56 @@ module RbArt
         self.instance_eval(&block)
       end
 
-      def item_t_with_index(t, &block)
-        idx  = t.div(1)
-        t    = t.modulo(1)
-        item = idx != count ? @items[idx] : @items.last
+      # functional_t 是跨整條 chain 的「索引 + 段內 t」組合（整數部分選段，小數
+      # 部分是該段自己的 functional_t），不是依真實弧長等距——曲率不同或段落
+      # 長度不同時，同樣的 functional_t 增量在畫面上對應的長度不會一樣。
+      def item_at_functional_t(functional_t, &block)
+        idx                 = functional_t.div(1)
+        local_functional_t  = functional_t.modulo(1)
+        item                = idx != count ? @items[idx] : @items.last
 
-        block.(item, t, idx)
+        block.(item, local_functional_t, idx)
       end
 
-      def point_at t
-        idx = t.div(1)
-        t   = t.modulo(1)
+      def point_at functional_t
+        idx                 = functional_t.div(1)
+        local_functional_t  = functional_t.modulo(1)
 
-        return @items[idx].point_at(t) if idx != count
+        return @items[idx].point_at(local_functional_t) if idx != count
         return @items.last.point_at(1)
       end
 
-      def normal_at t
-        idx = t.div(1)
-        t   = t.modulo(1)
+      def normal_at functional_t
+        idx                 = functional_t.div(1)
+        local_functional_t  = functional_t.modulo(1)
 
-        return @items[idx].normal_at(t) if idx != count
+        return @items[idx].normal_at(local_functional_t) if idx != count
         return @items.last.normal_at(1)
       end
 
-      # 跨整條 chain 依「真實弧長」比例（0~1）找到對應的段落與段內 t，
-      # 修正各段曲率不同造成 point_at(t) 在畫面上忽密忽疏的問題
-      # （跟 CubicBezier#split_by_arc_lengths 是同一個道理，只是這裡是跨段查點而不是切割）。
-      def item_length_fraction_with_index(fraction, &block)
-        target = fraction * total_length
+      # 跨整條 chain 依「真實弧長」比例 spatial_t（0~1）找到對應的段落與段內
+      # functional_t，修正各段曲率不同造成 point_at(functional_t) 在畫面上忽密
+      # 忽疏的問題（跟 CubicBezier#split_by_spatial_lengths 是同一個道理，只是這裡
+      # 是跨段查點而不是切割）。
+      def item_at_spatial_t(spatial_t, &block)
+        target = spatial_t * total_length
         cum = 0.0
 
         segment_tables.each_with_index { |table, idx|
           len = table.last[1]
 
           if idx == segment_tables.size - 1 || target <= cum + len
-            local_fraction = len.zero? ? 0.0 : (target - cum) / len
-            t = @items[idx].t_at_length_fraction(local_fraction, table: table)
-            return block.(@items[idx], t, idx)
+            local_spatial_t = len.zero? ? 0.0 : (target - cum) / len
+            functional_t = @items[idx].functional_t_at_spatial_t(local_spatial_t, table: table)
+            return block.(@items[idx], functional_t, idx)
           end
 
           cum += len
         }
       end
 
-      def point_at_length_fraction(fraction)
-        item_length_fraction_with_index(fraction) { |item, t, _idx| item.point_at(t) }
+      def point_at_spatial_t(spatial_t)
+        item_at_spatial_t(spatial_t) { |item, functional_t, _idx| item.point_at(functional_t) }
       end
 
       def total_length

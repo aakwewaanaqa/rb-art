@@ -29,15 +29,15 @@ Vines  = []
   }
 
   vine = RbArt::Geometry::ArbitraryChain.new {
-    items RbArt::Geometry::CubicBezier.catmull_rom_chain(
+    items RbArt::Geometry::CubicBezier.catmull(
       points,
       tension: 0.6,
     )
 
-    (0..1.0).step(1.fdiv(11)).to_a.each { |fraction|
-      item_length_fraction_with_index(fraction) { |bez, t, idx|
+    (0..1.0).step(1.fdiv(11)).to_a.each { |spatial_t|
+      item_at_spatial_t(spatial_t) { |bez, functional_t, idx|
         idx_is_odd = idx % 2 == 1
-        r = bez.point_at t
+        r = bez.point_at functional_t
         d = idx_is_odd ? 
           RbArt::Geometry::Point.new(+1, 1) :
           RbArt::Geometry::Point.new(-1, 1)

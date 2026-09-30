@@ -71,8 +71,8 @@ module RbArt
       # 對單一段曲線取樣，沿法線偏移 offset（正負代表左右兩側）。
       def offset_side(bez, offset, samples)
         (0..samples).map { |i|
-          t = i.fdiv(samples)
-          bez.point_at(t) + bez.normal_at(t).scale(offset)
+          functional_t = i.fdiv(samples)
+          bez.point_at(functional_t) + bez.normal_at(functional_t).scale(offset)
         }
       end
 
