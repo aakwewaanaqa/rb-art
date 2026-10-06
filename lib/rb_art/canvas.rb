@@ -29,6 +29,7 @@ module RbArt
       @elements = []
       @defs = []
       @gradient_count = 0
+      @registered_filter_ids = []
       instance_eval(&block) if block
       write(@svg) if @svg
       write_png(@png) if @png
@@ -50,7 +51,11 @@ module RbArt
     end
 
     # element 可以是 SVG 字串，也可以是任何有 to_svg 的物件（例如 RbArt::Path.new { ... }）。
+    # 如果 element 有 filters（例如用了 GlowFilter 的 Path），在真正畫出來的這一刻
+    # 才把對應的 <filter> 定義登記進 @defs——同一個濾鏡物件（同一個 id）只登記一次，
+    # 可以放心讓多個圖案共用同一個 GlowFilter 實例。
     def draw(element)
+      register_filters(element.filters) if element.respond_to?(:filters)
       @elements << (element.respond_to?(:to_svg) ? element.to_svg : element)
       self
     end
@@ -128,6 +133,17 @@ module RbArt
     def next_gradient_id
       @gradient_count += 1
       "gradient#{@gradient_count}"
+    end
+
+    # 把一組濾鏡物件（GlowFilter 等）的定義登記進 @defs，同一個 id 不重複登記，
+    # 讓多個圖案共用同一個濾鏡物件時只會產生一份 <filter>。
+    def register_filters(filters)
+      filters.each { |f|
+        next if @registered_filter_ids.include?(f.id)
+
+        @registered_filter_ids << f.id
+        @defs << f.to_def
+      }
     end
 
     # stops 可以傳：

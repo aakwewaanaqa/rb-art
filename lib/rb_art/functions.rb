@@ -33,4 +33,26 @@ module RbArt
       f
     end
   end
+
+  TwoPi = Math::PI * 2
+
+  # 三次平滑步（smoothstep），把線性的 t（0..1）重新映射成頭尾趨緩、
+  # 中段加速的時間緩動曲線：f'(0) = f'(1) = 0。
+  def self.ease_in_out(t)
+    t * t * (3 - 2 * t)
+  end
+
+  # 從一個 style hash 裡取出用到的濾鏡物件（例如 GlowFilter），給 Canvas#draw
+  # 用來登記 <defs>。style[:filter] 沒給、或給的是純字串（直接寫 "url(#id)"）
+  # 就回傳空陣列——只有濾鏡物件（回應 to_def）才需要 Canvas 額外登記定義。
+  def self.style_filters(style)
+    f = style[:filter]
+    f.respond_to?(:to_def) ? [f] : []
+  end
+
+  DefaultStyle = {
+    fill: "none",
+    stroke: "black",
+    stroke_width: "1"
+  }
 end

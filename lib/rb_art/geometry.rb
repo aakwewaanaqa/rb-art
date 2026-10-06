@@ -11,3 +11,7 @@ require_relative "geometry/stroke"
 require_relative "geometry/rnd"
 require_relative "geometry/poisson_disc"
 require_relative "geometry/perlin"
+
+module RbArt::Geometry
+  Origin = RbArt::Geometry::Point.new(0, 0)
+end

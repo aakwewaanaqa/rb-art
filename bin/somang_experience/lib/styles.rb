@@ -6,6 +6,8 @@ module RbArt
   PlantNoramlColor = RbArt.color_hex("#A8DF11")
   SkinPink = RbArt.color_hex "FFBAE7"
   SpiritBlue = RbArt.color_hex "0BAEFF"
+  BananaYellow = RbArt.color_hex "FCEF36"
+  BananaYellowShade = RbArt.color_hex "7A7201"
 
   GrassColors = [
     RbArt.color_hex("#DBFD02"),

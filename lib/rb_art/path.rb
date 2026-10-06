@@ -37,14 +37,39 @@ module RbArt
       @commands = []
       @attrs = {}
       @effects = []
+      @filters = []
       instance_eval(&block) if block_given?
     end
+
+    # Canvas#draw 用這個拿到這個 Path 用了哪些濾鏡物件，好在畫出來的當下
+    # 才去登記對應的 <defs>，而不用在建立 Path 之前就先準備好 canvas 參考。
+    attr_reader :filters
 
     # -- 樣式屬性 --
     def fill(color)         = (@attrs["fill"] = color)
     def stroke(color)       = (@attrs["stroke"] = color)
     def stroke_width(width) = (@attrs["stroke-width"] = width)
+    # join 可以是 "round" / "bevel" / "miter"（SVG 預設）。stroke 的轉角、
+    # 或路徑本身帶尖角時都靠這個決定要不要磨圓，不用自己算幾何。
+    def stroke_linejoin(join) = (@attrs["stroke-linejoin"] = join)
     def attr(name, value)   = (@attrs[name.to_s] = value)
+
+    # filter 可以直接傳 SVG 的 url(#id) 字串，也可以傳 GlowFilter 這種「濾鏡
+    # 描述物件」——後者會記錄下來讓 Canvas#draw 之後去登記 def，屬性值本身
+    # 則直接拿物件自己算好的參照字串。
+    def filter(value)
+      if value.respond_to?(:to_ref)
+        @filters << value
+        attr "filter", value.to_ref
+      else
+        attr "filter", value
+      end
+    end
+
+    # 設定 CSS 的 mix-blend-mode（例如 "screen" / "multiply" / "lighten"），
+    # 決定這個圖形跟底下已經畫出來的東西怎麼混色。rsvg-convert（這個 repo
+    # 匯出 PNG/動畫用的工具）有支援，混色結果跟瀏覽器一致。
+    def blend_mode(mode) = attr("style", "mix-blend-mode: #{mode}")
 
     # 疊加一個 Point -> Point 的變形（例如彎曲），套用在 to_d 字串化之前。
     # 可以呼叫多次疊加，依呼叫順序套用；前一個 effect 的輸出就是下一個的輸入。
@@ -59,6 +84,9 @@ module RbArt
       fill hash[:fill] if hash.key?(:fill)
       stroke hash[:stroke] if hash.key?(:stroke)
       stroke_width hash[:stroke_width] if hash.key?(:stroke_width)
+      stroke_linejoin hash[:stroke_linejoin] if hash.key?(:stroke_linejoin)
+      filter hash[:filter] if hash.key?(:filter)
+      blend_mode hash[:blend_mode] if hash.key?(:blend_mode)
     end
 
     # -- 絕對座標 --
