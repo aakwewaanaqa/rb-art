@@ -1,3 +1,5 @@
+require_relative "cumulative_locator"
+
 module RbArt
   module Geometry
     class ArbitraryChain
@@ -42,22 +44,17 @@ module RbArt
       # 跨整條 chain 依「真實弧長」比例 spatial_t（0~1）找到對應的段落與段內
       # functional_t，修正各段曲率不同造成 point_at(functional_t) 在畫面上忽密
       # 忽疏的問題（跟 CubicBezier#split_by_spatial_lengths 是同一個道理，只是這裡
-      # 是跨段查點而不是切割）。
+      # 是跨段查點而不是切割）。跟 CubicBezier#functional_t_at_spatial_t 一樣是
+      # 「在累積弧長表裡定位 target」，只是這裡的累積表是段落長度而非取樣點，
+      # 所以共用 CumulativeLocator。
       def item_at_spatial_t(spatial_t, &block)
         target = spatial_t * total_length
-        cum = 0.0
+        idx, cum = CumulativeLocator.locate(segment_cumulative_lengths, target)
+        len = segment_cumulative_lengths[idx] - cum
 
-        segment_tables.each_with_index { |table, idx|
-          len = table.last[1]
-
-          if idx == segment_tables.size - 1 || target <= cum + len
-            local_spatial_t = len.zero? ? 0.0 : (target - cum) / len
-            functional_t = @items[idx].functional_t_at_spatial_t(local_spatial_t, table: table)
-            return block.(@items[idx], functional_t, idx)
-          end
-
-          cum += len
-        }
+        local_spatial_t = len.zero? ? 0.0 : (target - cum) / len
+        functional_t = @items[idx].functional_t_at_spatial_t(local_spatial_t, table: segment_tables[idx])
+        block.(@items[idx], functional_t, idx)
       end
 
       def point_at_spatial_t(spatial_t)
@@ -65,13 +62,21 @@ module RbArt
       end
 
       def total_length
-        @total_length ||= segment_tables.sum { |table| table.last[1] }
+        @total_length ||= segment_cumulative_lengths.last
       end
 
       private
 
       def segment_tables
         @segment_tables ||= @items.map(&:arc_length_table)
+      end
+
+      # 各段長度的累積和（絕對值，非比例），供 CumulativeLocator 在跨段查找時使用。
+      def segment_cumulative_lengths
+        @segment_cumulative_lengths ||= begin
+          cum = 0.0
+          segment_tables.map { |table| cum += table.last[1] }
+        end
       end
     end
   end

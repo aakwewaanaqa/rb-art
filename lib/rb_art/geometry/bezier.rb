@@ -1,9 +1,12 @@
 require_relative "point"
+require_relative "arc_length"
 
 module RbArt
   module Geometry
     # 三次貝茲曲線，基於 blossom（極化形式）做任意切割。
     class CubicBezier
+      include ArcLength
+
       attr_reader :p0, :p1, :p2, :p3
 
       def initialize(p0, p1, p2, p3)
@@ -57,32 +60,6 @@ module RbArt
 
       # 等分成 n 段。
       def split_into(n) = split_at_knots((0..n).map { |i| i.fdiv(n) })
-
-      # 弧長對應表：用折線逼近，回傳 [[t, 累積弧長], ...]（共 samples+1 筆，t 等距）。
-      # 回傳 [[functional_t, 累積弧長], ...]（共 samples+1 筆，functional_t 等距）。
-      def arc_length_table(samples: 200)
-        functional_ts = (0..samples).map { |i| i.fdiv(samples) }
-        pts = functional_ts.map { |functional_t| point_at(functional_t) }
-        lengths = [0.0]
-        pts.each_cons(2) { |a, b| lengths << lengths.last + (b - a).length }
-        functional_ts.zip(lengths)
-      end
-
-      def arc_length(samples: 200) = arc_length_table(samples: samples).last[1]
-
-      # 給定「曲線總長度」的累積比例 spatial_t（0~1，真實弧長意義下等距），
-      # 反查對應的 functional_t（表格區間內線性插值）。
-      def functional_t_at_spatial_t(spatial_t, table: arc_length_table)
-        target = spatial_t * table.last[1]
-        i = table.index { |_, len| len >= target } || table.size - 1
-        return table[i][0] if i == 0
-
-        functional_t0, l0 = table[i - 1]
-        functional_t1, l1 = table[i]
-        return functional_t0 if l1 == l0
-
-        functional_t0 + (functional_t1 - functional_t0) * (target - l0) / (l1 - l0)
-      end
 
       # 依「實際弧長」比例切割（spatial_lengths 總和須為 1）。跟 split_by_functional_lengths 不同：
       # split_by_functional_lengths 是照 functional_t 參數比例切，這個是照曲線在畫面上的真實長度比例切，

@@ -1,4 +1,6 @@
 # 共用的向量與橢圓幾何工具。
+require_relative "geometry/cumulative_locator"
+require_relative "geometry/arc_length"
 require_relative "geometry/arbitrary_chain"
 require_relative "geometry/point"
 require_relative "geometry/segment"
