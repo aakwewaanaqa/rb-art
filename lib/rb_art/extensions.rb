@@ -1,24 +1,15 @@
 class Integer
-  def to_rad
-    Math::PI * self
-  end
+  def to_rad() Math::PI * self end
+  def is_odd?() self % 2 == 1 end
 end
 
 class Float
-  def to_rad
-    Math::PI * self
-  end  
+  def to_rad() Math::PI * self end  
 end
 
 class Array
-  def scramble
-    self.sample count
-  end
-
-  def round_indexer idx
-    idx = idx % count
-    self[idx]
-  end
+  def scramble() self.sample count end
+  def round_indexer(idx) self[idx % count] end
 
   def each_i_first_last(&block)
     n = count
