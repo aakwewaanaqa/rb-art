@@ -6,6 +6,8 @@ require_relative "rb_art/filters"
 require_relative "rb_art/path"
 require_relative "rb_art/text"
 require_relative "rb_art/canvas"
+require_relative "rb_art/cue"
+require_relative "rb_art/timeline"
 require_relative "rb_art/animation"
 require_relative "rb_art/shapes/grass_clump"
 

@@ -105,6 +105,41 @@ module RbArt
       def dedup(points, eps: 1e-6)
         points.each_with_object([]) { |p, acc| acc << p if acc.empty? || acc.last.dist(p) > eps }
       end
+
+      # points 是已經夠密的離散點（例如螺旋等角度取樣出來的 2000 點），直接當折線
+      # expand，不走 outline 那套 point_at/normal_at 取樣機制：每段本身是直線，不需要
+      # 段內取樣；轉角用「該點前後兩段方向的平均」當法線（簡單 miter），適合取樣密、
+      # 相鄰段夾角小的情況。夾角大時 miter 會削角/凸出，但這裡先不處理，等實際畫出來
+      # 真的有問題再局部補圓弧（見 join_arc）。
+      #
+      # @return [Array<Array<Point>>]，語意跟 outline 一樣：closed: false 回傳一個
+      # 封閉外框；closed: true 回傳 [外圈, 內圈] 兩個封閉圈。
+      def outline_polyline(points, width, closed: false, cap_samples: 8)
+        raise ArgumentError, "points needs at least 2 points" if points.size < 2
+
+        halfwidth = width / 2.0
+        n = points.size
+
+        left  = (0...n).map { |i| points[i] + vertex_normal(points, i, closed: closed).scale(halfwidth) }
+        right = (0...n).map { |i| points[i] - vertex_normal(points, i, closed: closed).scale(halfwidth) }
+
+        if closed
+          [dedup(left), dedup(right)]
+        else
+          end_cap   = cap_arc(points.last, left.last, cap_samples)
+          start_cap = cap_arc(points.first, right.first, cap_samples)
+          [dedup(left + end_cap + right.reverse + start_cap)]
+        end
+      end
+
+      # 頂點 i 的法線：用前後兩段方向的平均（而非單段方向），讓轉角處兩側偏移線
+      # 自然銜接成一個溫和的 miter，不需要額外的圓弧取樣。
+      def vertex_normal(points, i, closed: false)
+        n = points.size
+        prev_i = closed ? (i - 1) % n : (i - 1).clamp(0, n - 1)
+        next_i = closed ? (i + 1) % n : (i + 1).clamp(0, n - 1)
+        (points[next_i] - points[prev_i]).normalize.rotate(Math::PI / 2)
+      end
     end
   end
 end

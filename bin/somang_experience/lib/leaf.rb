@@ -1,12 +1,20 @@
 module RbArt
   class Leaf
-    def root(p) @root = p end
-    def direction(p) @direction = p end
-    def stem_length(f) @stem_length = f end
-    def stem_width(f) @stem_width = f end
-    def leaf_length(f) @leaf_length = f end
-    def leaf_width(f) @leaf_width = f end
-    def style(h) @style = h end
+    def scale(s)
+      stem_length stem_length * s
+      stem_width  stem_width  * s
+      leaf_length leaf_length * s
+      leaf_width  leaf_width  * s
+      self
+    end
+
+    def root       (p = nil) p ? (@root = p)        : @root end
+    def direction  (p = nil) p ? (@direction = p)   : @direction end
+    def stem_length(f = nil) f ? (@stem_length = f) : @stem_length end
+    def stem_width (f = nil) f ? (@stem_width = f)  : @stem_width end
+    def leaf_length(f = nil) f ? (@leaf_length = f) : @leaf_length end
+    def leaf_width (f = nil) f ? (@leaf_width = f)  : @leaf_width end
+    def style      (h = nil) h ? (@style = h)       : @style end
     def initialize(&block) 
       self.instance_eval(&block)
       @root        = RbArt.unpack_param! @root        || RbArt::Geometry::Point.new(0, 0)

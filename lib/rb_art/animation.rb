@@ -15,6 +15,15 @@ module RbArt
   #     canvas
   #   }
   #
+  # 搭配 Timeline 時可以不寫 render block，frames / fps / 每格內容都交給
+  # Timeline 決定：
+  #
+  #   RbArt::Animation.new {
+  #     timeline timeline
+  #     canvas { width 200; height 200; background "#9ED06D" }
+  #     gif "out/animation.gif"
+  #   }.render
+  #
   # render 結束時會自動輸出有設定的 gif / mp4（跟 Canvas 一樣：內容準備好就自動寫檔）。
   # 若只想拿到 frame 序列而不自動輸出，設定區塊不要呼叫 gif / mp4，事後再手動呼叫
   # write_gif / write_mp4 即可。
@@ -32,6 +41,13 @@ module RbArt
       @scale = 1
       @fps = 24
       instance_eval(&block) if block
+      # 給了 timeline 就以它為準：fps 跟 frames 都從它身上拿。
+      # 不這樣做的話 fps 會有兩個來源，一旦不一致（timeline 用 12fps 取樣、
+      # ffmpeg 用 24fps 編碼）動畫就會快兩倍，而且不會報錯。
+      if @timeline
+        @fps    = @timeline.fps
+        @frames = @timeline.frame_count
+      end
       @digits = @frames.to_s.length.clamp(3, Float::INFINITY).to_i
     end
 
@@ -42,9 +58,30 @@ module RbArt
     def mp4(value = nil) = value.nil? ? @mp4 : (@mp4 = value)
     def fps(value = nil) = value.nil? ? @fps : (@fps = value)
 
-    # block 會被呼叫 frames 次，帶入 (frame_index, total_frames)，
-    # 必須回傳一個 RbArt::Canvas。
+    # 吃一份 RbArt::Timeline，frames 跟 fps 都不用自己設（設了也會被覆蓋）。
+    def timeline(value = nil) = value.nil? ? @timeline : (@timeline = value)
+
+    # 設定每一格 Canvas 的固定部分（width / height / background 等）。
+    # 跟 Canvas.new 的設定區塊寫法一樣，只是不含每格會變的內容——那部分
+    # 交給 timeline 的 cue 負責。只有搭配 timeline、不自己寫 render block
+    # 時才會用到。
+    def canvas(&block) = block.nil? ? @canvas : (@canvas = block)
+
+    # 有給 block：跟以前一樣，block 會被呼叫 frames 次，帶入
+    # (frame_index, total_frames)，必須回傳一個 RbArt::Canvas。
+    #
+    # 沒給 block：改用 timeline 自動組——每一格新建一個 Canvas，套用
+    # canvas 設定，再把 timeline.draw_at_frame(i) 要畫的東西逐一 draw 上去。
+    # 這條路線要求 timeline 跟 canvas 都已經設定好。
     def render(&block)
+      block ||= default_render_block
+      # 先清掉整個 @dir 再重建，不能只 mkdir_p：write_gif / write_mp4 餵給
+      # ffmpeg 的 png_glob 是 "frame_%03d.png" 這種序列號 pattern，ffmpeg 的
+      # image2 demuxer 會從 0 開始連續讀到第一個缺號才停——如果上一次渲染
+      # frame 數比這次多，殘留的舊檔案（例如上次 60 格、這次 42 格留下的
+      # frame_042.png ~ frame_059.png）編號是連續的，會被 ffmpeg 誤判成這次
+      # 動畫的延伸，接在新內容後面一起轉出去。
+      FileUtils.rm_rf(@dir)
       FileUtils.mkdir_p(@dir)
       @frames.times do |i|
         canvas = block.call(i, @frames)
@@ -76,6 +113,20 @@ module RbArt
     end
 
     private
+
+    def default_render_block
+      raise ArgumentError, "render 沒給 block 時需要先設定 timeline" unless @timeline
+      raise ArgumentError, "render 沒給 block 時需要先設定 canvas { width ...; height ... }" unless @canvas
+
+      canvas_config = @canvas
+      timeline      = @timeline
+      -> (i, _total) {
+        Canvas.new {
+          instance_eval(&canvas_config)
+          timeline.draw_at_frame(i).each { |element| draw element }
+        }
+      }
+    end
 
     def svg_path(i) = File.join(@dir, "frame_%0#{@digits}d.svg" % i)
     def png_path(i) = File.join(@dir, "frame_%0#{@digits}d.png" % i)
