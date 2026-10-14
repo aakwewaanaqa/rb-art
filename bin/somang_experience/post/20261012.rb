@@ -137,6 +137,7 @@ Timeline = RbArt::Timeline.new {
   }
 }
 
+if __FILE__ == $0
 RbArt::Animation.new {
   timeline Timeline
   canvas {
@@ -148,3 +149,4 @@ RbArt::Animation.new {
   gif "out/post/20261012.gif"
   mp4 "out/post/20261012.mp4"
 }.render
+end

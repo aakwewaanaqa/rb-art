@@ -42,6 +42,15 @@ module RbArt
     t * t * (3 - 2 * t)
   end
 
+  # 正弦來回擺動：給經過的秒數，回傳 -amplitude..amplitude 之間的值，
+  # 每 period 秒擺完一輪。用在上下飄動、呼吸縮放這類循環動作。
+  #
+  # seconds 是 0 跟 period 的整數倍時回傳 0，所以動畫總長抓成 period 的
+  # 整數倍，GIF 循環接回開頭時位置就會對上、不會跳一下。
+  def self.oscillate(seconds, period:, amplitude:)
+    amplitude * Math.sin(TwoPi * seconds / period)
+  end
+
   # 從一個 style hash 裡取出用到的濾鏡物件（例如 GlowFilter），給 Canvas#draw
   # 用來登記 <defs>。style[:filter] 沒給、或給的是純字串（直接寫 "url(#id)"）
   # 就回傳空陣列——只有濾鏡物件（回應 to_def）才需要 Canvas 額外登記定義。
