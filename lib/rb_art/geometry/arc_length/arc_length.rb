@@ -1,4 +1,4 @@
-require_relative "cumulative_locator"
+require_relative "../cumulative_locator/cumulative_locator"
 
 module RbArt
   module Geometry

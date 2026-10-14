@@ -1,4 +1,4 @@
-require_relative "point"
+require_relative "../point"
 
 module RbArt
   module Geometry

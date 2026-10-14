@@ -1,4 +1,4 @@
-require_relative "cumulative_locator"
+require_relative "cumulative_locator/cumulative_locator"
 
 module RbArt
   module Geometry
@@ -9,6 +9,11 @@ module RbArt
       def items v
         v.nil? ? @items : (@items = v)
       end
+
+      # 是否為封閉輪廓（SVG 的 Z）。只是標記，收尾回起點的那段直線
+      # 要由建立者自己放進 items（PathData.parse 會處理）。
+      def closed(v = nil) = v.nil? ? !!@closed : (@closed = v)
+      def closed? = closed
 
       def initialize(&block)
         self.instance_eval(&block)

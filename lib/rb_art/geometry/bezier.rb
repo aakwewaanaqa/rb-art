@@ -1,5 +1,5 @@
 require_relative "point"
-require_relative "arc_length"
+require_relative "arc_length/arc_length"
 
 module RbArt
   module Geometry
@@ -16,6 +16,10 @@ module RbArt
       # 把直線 p0->p1 包裝成 CubicBezier（控制點等距落在線上），
       # 這樣直線段跟曲線段可以用同一套 point_at/tangent_at/arc_length API 混著處理。
       def self.line(p0, p1) = CubicBezier.new(p0, p0.lerp(p1, 1.0 / 3), p0.lerp(p1, 2.0 / 3), p1)
+
+      # 二次貝茲（p0, 控制點 q, p2）升階成三次，形狀完全等價不是逼近，
+      # 所以 SVG 的 Q/T 跟字型的 TrueType 輪廓都能直接走同一套 CubicBezier API。
+      def self.quadratic(p0, q, p2) = CubicBezier.new(p0, p0.lerp(q, 2.0 / 3), p2.lerp(q, 2.0 / 3), p2)
 
       def point_at(functional_t) = blossom(functional_t, functional_t, functional_t)
 
